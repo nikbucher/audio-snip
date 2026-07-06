@@ -240,24 +240,24 @@ async fn serve_transcoded(path: &str, headers: &HeaderMap) -> Result<Response, S
 	let complete = session.complete.load(Ordering::Acquire);
 
 	// Range request — serve from the in-memory buffer (used by hls.js for segments)
-	if let Some(range_value) = headers.get(header::RANGE) {
-		if buf_len > 0 {
-			let range_str = range_value.to_str().map_err(|_| StatusCode::BAD_REQUEST)?;
-			let buffer = session.buffer.lock().unwrap();
-			let total = buffer.len() as u64;
-			let (start, end) = parse_range(range_str, total).ok_or(StatusCode::RANGE_NOT_SATISFIABLE)?;
-			let data = buffer[start as usize..=end as usize].to_vec();
-			let total_str = if complete { total.to_string() } else { "*".to_string() };
+	if let Some(range_value) = headers.get(header::RANGE)
+		&& buf_len > 0
+	{
+		let range_str = range_value.to_str().map_err(|_| StatusCode::BAD_REQUEST)?;
+		let buffer = session.buffer.lock().unwrap();
+		let total = buffer.len() as u64;
+		let (start, end) = parse_range(range_str, total).ok_or(StatusCode::RANGE_NOT_SATISFIABLE)?;
+		let data = buffer[start as usize..=end as usize].to_vec();
+		let total_str = if complete { total.to_string() } else { "*".to_string() };
 
-			return Response::builder()
-				.status(StatusCode::PARTIAL_CONTENT)
-				.header(header::CONTENT_TYPE, "video/mp4")
-				.header(header::CONTENT_LENGTH, data.len())
-				.header(header::CONTENT_RANGE, format!("bytes {}-{}/{}", start, end, total_str))
-				.header(header::ACCEPT_RANGES, "bytes")
-				.body(Body::from(data))
-				.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
-		}
+		return Response::builder()
+			.status(StatusCode::PARTIAL_CONTENT)
+			.header(header::CONTENT_TYPE, "video/mp4")
+			.header(header::CONTENT_LENGTH, data.len())
+			.header(header::CONTENT_RANGE, format!("bytes {}-{}/{}", start, end, total_str))
+			.header(header::ACCEPT_RANGES, "bytes")
+			.body(Body::from(data))
+			.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
 	}
 
 	// Transcode complete, no range — serve full buffer

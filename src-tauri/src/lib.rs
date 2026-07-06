@@ -659,7 +659,7 @@ mod tests {
 	#[test]
 	fn uc003_build_output_path_sanitizes_path_separators() {
 		let result = build_output_path("/tmp/video.mp4", "mp3", "foo/../../etc").unwrap();
-		assert_eq!(result, "/tmp/video-foo..etc-audio.mp3");
+		assert_eq!(result, "/tmp/video-foo....etc-audio.mp3");
 	}
 
 	#[test]
